@@ -167,10 +167,17 @@
             lastAdminTap = now;
             if(prompt("باسورد الإدارة:") === "1997") { document.getElementById('admin-panel').style.display = "block"; loadManagement(); }
         }
+        let tapCount = 0, tapTimer = null;
+        function handleTriggerTap() {
+            tapCount++;
+            clearTimeout(tapTimer);
+            if (tapCount >= 3) { tapCount = 0; openAdmin(); return; }
+            tapTimer = setTimeout(() => { tapCount = 0; }, 1200);
+        }
         (function() {
             const t = document.getElementById('adminTrigger');
-            t.addEventListener('touchend', (e) => { e.preventDefault(); openAdmin(); });
-            t.addEventListener('click', () => openAdmin());
+            t.addEventListener('touchend', (e) => { e.preventDefault(); handleTriggerTap(); });
+            t.addEventListener('click', () => handleTriggerTap());
         })();
         function openImg(url) { document.getElementById('light-img').src = url; document.getElementById('lightbox').style.display = "flex"; }
         function closeLightbox() { document.getElementById('lightbox').style.display = "none"; }

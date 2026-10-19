@@ -222,7 +222,7 @@ box-shadow:0 1px 0 rgba(255,255,255,.65) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 
   </div>
   <div class="cards" id="cardsWrap"></div>
   <div class="timeline"><div class="tl-fill" id="tlFill"></div><div class="tl-knob" id="tlKnob"></div></div>
-  <div class="tl-years" id="tlYears"><span>2022</span><span>2026</span></div>
+  <div class="tl-years" id="tlYears"><span>2023</span><span>2027</span></div>
   <div class="videos" id="videoGrid"></div>
   <div class="nav-row">
     <button class="cta press glow" id="toFinaleBtn">الرسالة الأخيرة 💌</button>
@@ -302,7 +302,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let settings = { title:"نغم", intro:"فخورين بيكي", date:"2022-09-01", pass:"123" };
+let settings = { title:"نغم", intro:"فخورين بيكي", date:"2023-09-01", pass:"123" };
 let photos = [], msgs = [], unlocked = false;
 
 db.ref('appSettings').on('value', s => {

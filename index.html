@@ -94,13 +94,17 @@ body{margin:0;background:var(--cream);color:var(--ink);font-family:'Cairo',sans-
 
 /* ---------- الفصول ---------- */
 .sec-head{text-align:center;margin-bottom:8px}
-.cards{display:flex;gap:18px;overflow-x:auto;padding:22px 8px 26px;scroll-snap-type:x mandatory;max-width:100%;width:100%;justify-content:flex-start}
+.cards{display:flex;gap:18px;overflow-x:auto;padding:22px 8px 26px;scroll-snap-type:x mandatory;max-width:100%;width:100%;justify-content:flex-start;perspective:1300px}
 .cards::-webkit-scrollbar{height:6px}
 .cards::-webkit-scrollbar-thumb{background:var(--sand);border-radius:99px}
-.flip{flex:0 0 235px;height:325px;perspective:1100px;scroll-snap-align:center;cursor:pointer}
+.flip{flex:0 0 235px;height:325px;perspective:1100px;scroll-snap-align:center;cursor:pointer;position:relative;border-radius:18px;
+transform:rotateY(var(--ry,0deg)) scale(var(--sc,1));
+transition:transform .3s ease-out,box-shadow .3s;
+box-shadow:0 1px 0 rgba(255,255,255,.65) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 18px 34px rgba(60,30,10,.25),0 4px 10px rgba(60,30,10,.2)}
+.flip:hover{box-shadow:0 1px 0 rgba(255,255,255,.65) inset,0 -2px 0 rgba(0,0,0,.18) inset,0 24px 44px rgba(60,30,10,.3),0 6px 14px rgba(60,30,10,.22)}
 .flip-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.22,1,.36,1)}
 .flip.flipped .flip-inner{transform:rotateY(180deg)}
-.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(60,30,10,.18)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -3px 8px rgba(0,0,0,.28),inset 3px 0 8px rgba(0,0,0,.1),inset -3px 0 8px rgba(0,0,0,.1)}
 .face.front img{width:100%;height:100%;object-fit:cover}
 .zoom{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.45);color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2}
 .face.back{background:linear-gradient(160deg,#8a2231,var(--red-d));color:#f6ead8;transform:rotateY(180deg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;text-align:center}
@@ -142,7 +146,7 @@ body{margin:0;background:var(--cream);color:var(--ink);font-family:'Cairo',sans-
 .btn-gold.press:active{transform:scale(.95)}
 .envelope.flash{animation:envFlash .55s}
 @keyframes envFlash{50%{filter:drop-shadow(0 0 30px rgba(230,200,106,.95)) brightness(1.1)}}
-.flip.press:active{transform:scale(.96)}
+.flip.press:active{transform:rotateY(var(--ry,0deg)) scale(.96)}
 .zoom.press{border-radius:50%}
 @keyframes ripple{to{transform:scale(1);opacity:0}}
 </style>
@@ -257,6 +261,7 @@ body{margin:0;background:var(--cream);color:var(--ink);font-family:'Cairo',sans-
   <div class="adm-card">
     <label>إضافة محتوى:</label>
     <input type="file" id="photoFile" accept="image/*">
+    <input type="text" id="photoMsgInp" placeholder="النص اللي هيظهر في ظهر الكارت ده (اختياري)">
     <input type="file" id="videoFile" accept="video/*">
     <input type="file" id="musicFile" accept="audio/*">
     <textarea id="msgInp" placeholder="اكتب رسالة تظهر ورا الصور.."></textarea>
@@ -313,7 +318,19 @@ db.ref('appSettings').on('value', s => {
   }
 });
 db.ref('visuals/bg').on('value', s => { if (s.val()) document.getElementById('bgLayer').style.backgroundImage = "url(" + s.val() + ")"; });
-db.ref('visuals/music').on('value', s => { if (s.val()) document.getElementById('bgMusic').src = s.val(); });
+let musicWanted = false;
+db.ref('visuals/music').on('value', s => {
+  if (s.val()) {
+    const m = document.getElementById('bgMusic');
+    m.src = s.val();
+    if (unlocked && musicWanted) m.play().catch(() => {});
+  }
+});
+/* لو المتصفح منع التشغيل التلقائي: أول لمسة في الموقع بتشغلها */
+document.addEventListener('pointerdown', () => {
+  const m = document.getElementById('bgMusic');
+  if (musicWanted && m.src && m.paused) m.play().catch(() => {});
+});
 db.ref('photos').on('value', s => {
   photos = s.val() ? Object.entries(s.val()).map(([k,v]) => Object.assign({key:k}, v)) : [];
   if (unlocked) { buildChapters(); buildVideos(); loadManagement(); }
@@ -343,7 +360,16 @@ function unlock() {
   setTimeout(() => document.getElementById('gate').style.display = "none", 1000);
   showScene('scene-envelope');
   startConfetti();
-  const m = document.getElementById('bgMusic'); if (m.src) m.play().catch(()=>{});
+  musicWanted = true;
+  const m = document.getElementById('bgMusic');
+  if (m.src) { m.play().catch(() => {}); }
+  else {
+    /* لو الموسيقى لسه جاية من Firebase: أول ما توصل تشتغل */
+    const tryPlay = setInterval(() => {
+      if (document.getElementById('bgMusic').src) { document.getElementById('bgMusic').play().catch(() => {}); clearInterval(tryPlay); }
+    }, 500);
+    setTimeout(() => clearInterval(tryPlay), 15000);
+  }
   buildChapters(); buildVideos(); renderFinaleMsgs(); startCounter();
 }
 
@@ -406,10 +432,11 @@ function buildChapters() {
   imgs.forEach((p, i) => {
     const card = document.createElement('div');
     card.className = 'flip';
+    const caption = (p.msg && p.msg.trim()) ? p.msg : backs[i % backs.length];
     card.innerHTML =
       '<div class="flip-inner">' +
         '<div class="face front"><img src="' + p.url + '" loading="lazy"><span class="zoom" data-key="' + (p.key||'') + '">⤢</span></div>' +
-        '<div class="face back"><span class="b-cap">🎓<br>' + backs[i % backs.length] + '</span><span class="b-note">CHAPTER ' + (i+1) + '</span></div>' +
+        '<div class="face back"><span class="b-cap">🎓<br>' + caption + '</span><span class="b-note">CHAPTER ' + (i+1) + '</span></div>' +
       '</div>';
     card.addEventListener('click', e => {
       if (e.target.classList.contains('zoom')) { openImg(p.url); return; }
@@ -417,6 +444,7 @@ function buildChapters() {
     });
     wrap.appendChild(card);
   });
+  requestTilt();
 }
 function buildVideos() {
   const vg = document.getElementById('videoGrid');
@@ -432,6 +460,31 @@ function renderFinaleMsgs() {
   const list = msgs.length ? msgs : ["فخورين بيكي يا " + settings.title + " ❤"];
   box.innerHTML = list.map(t => '<div class="f-msg">' + t + '</div>').join('');
 }
+
+/* ميلان 3D خفيف للكروت حسب مكانها في الشاشة */
+let tiltRaf = false;
+const tiltReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function updateTilt() {
+  if (tiltReduce) return;
+  const wrap = document.getElementById('cardsWrap');
+  if (!wrap) return;
+  const mid = innerWidth / 2;
+  wrap.querySelectorAll('.flip').forEach(card => {
+    const r = card.getBoundingClientRect();
+    if (r.right < -80 || r.left > innerWidth + 80) return;
+    const rel = Math.max(-1, Math.min(1, ((r.left + r.width / 2) - mid) / mid));
+    card.style.setProperty('--ry', (rel * -14).toFixed(2) + 'deg');
+    card.style.setProperty('--sc', (1 - Math.min(Math.abs(rel), 0.6) * 0.07).toFixed(3));
+  });
+}
+function requestTilt() {
+  if (tiltRaf) return;
+  tiltRaf = true;
+  requestAnimationFrame(() => { tiltRaf = false; updateTilt(); });
+}
+window.addEventListener('scroll', requestTilt, { passive: true });
+window.addEventListener('resize', requestTilt);
+document.getElementById('cardsWrap').addEventListener('scroll', requestTilt, { passive: true });
 
 /* العداد والتايم لاين */
 function startCounter() {
@@ -551,7 +604,10 @@ document.getElementById('upBtn').onclick = async () => {
   if (msg) { await db.ref('messages').push({text: msg}); document.getElementById('msgInp').value = ""; }
   const readFile = f => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
   if (music) await db.ref('visuals/music').set(await readFile(music));
-  if (photo) await db.ref('photos').push({url: await readFile(photo), type: 'img'});
+  if (photo) {
+    await db.ref('photos').push({url: await readFile(photo), type: 'img', msg: document.getElementById('photoMsgInp').value.trim()});
+    document.getElementById('photoMsgInp').value = "";
+  }
   if (video) await db.ref('photos').push({url: await readFile(video), type: 'vid'});
   document.getElementById('photoFile').value = "";
   document.getElementById('videoFile').value = "";
@@ -569,7 +625,9 @@ function loadManagement() {
       Object.entries(s.val()).forEach(([key, val]) => {
         const item = document.createElement('div');
         item.className = 'manage-item';
-        let preview = type === 'photos' ? (val.type === 'vid' ? '📽️ فيديو' : '<img src="' + val.url + '">') : '📝 ' + val.text.substring(0,12) + '..';
+        let preview = type === 'photos'
+          ? ((val.type === 'vid' ? '📽️ فيديو' : '<img src="' + val.url + '">') + (val.msg ? '<small style="display:block;font-size:9px;color:#e6c86a;margin-top:2px">' + val.msg.substring(0,16) + '..</small>' : ''))
+          : '📝 ' + val.text.substring(0,12) + '..';
         item.innerHTML = '<span>' + preview + '</span><button class="del-btn" data-type="' + type + '" data-key="' + key + '">حذف</button>';
         c.appendChild(item);
       });
